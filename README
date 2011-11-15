@@ -1,0 +1,28 @@
+netup-dvb-s2-ci-dual
+====================
+
+NetUP Dual DVB-S2 CI card driver sources for Microsoft Broadcast Driver Architecture (BDA)
+
+** Build steps **
+
+1. Install Microsoft Windows Driver Development Kit (DDK)
+2. Download driver sources
+3. Unpack driver sources into C:\netup-dvb-s2-ci-dual or any appropriate location
+4. Run Checked Build Environment (for debug build) or Free Build environment (for release build) from Windows DDK
+5. Run commands listed below in build environment console:
+    C:\> cd C:\netup-dvb-s2-ci-dual
+    C:\> build
+6. Check subfolder created by build process for netup_cx23885.sys file
+
+** Install steps **
+
+1. Copy netup_cx23885.sys into the same folder as netup.inf (for example, C:\netup-dvb-s2-ci-dual)
+2. Install driver from specified location using Windows Device Manager
+
+Proprietary API
+
+This software based on Microsoft BDA standard, but some features (DiSEqC, CI) supported by proprietary API,
+for more details see netup_bda_api.h file. If you're interested in support of this card in your DVB software,
+contact NetUP,Inc for reference implementation.
+
+Copyright (C) 2009-2011 NetUP,Inc <info@netup.ru>
