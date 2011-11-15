@@ -1,0 +1,89 @@
+[Version]
+Signature=$CHICAGO$
+Class=Media
+ClassGuid={4d36e96c-e325-11ce-bfc1-08002be10318}
+CatalogFile=netup.cat
+LayoutFile=Layout.inf
+DriverVer=08/01/2011,1.0.2.1
+Provider=%NetupInc%
+
+[DestinationDirs]
+DefaultDestDir=10,System32\drivers
+
+[manufacturer]
+%NetupInc%=NetUP
+
+[NetUP]
+%NetupDevDesc%=NetupDriverInstall,PCI\VEN_14F1&DEV_8852&SUBSYS_2A2C1B55
+
+[NetupDriverInstall.NT]
+Include=ks.inf, kscaptur.inf, bda.inf
+Needs=KS.Registration,KSCAPTUR.Registration,BDA.Installation
+CopyFiles=NetupCopyFiles
+
+[NetupDriverInstall.NT.Services]
+AddService=netup_cx23885,2,NetupDriverService
+
+[NetupDriverService]
+ServiceType=1
+StartType=1
+ErrorControl=1
+ServiceBinary=%10%\System32\drivers\netup_cx23885.sys
+
+[NetupCopyFiles]
+netup_cx23885.sys,,,2
+
+[NetupDriverInstall.NT.Interfaces]
+; Add an interface for each type of filter exposed by this device driver.
+; The format of each line is as follows
+;
+; AddInterface = DSHOW_CATEGORY, FILTER_REFERENCE_GUID, INSTALLATION_SECTION
+;
+; DSHOW_CATEGORY is the GUID for the Direct Show category in which the
+; filter should appear.  A filter that appears in multiple categories should
+; have a line for each category.
+;
+; FILTER_REFERENC_GUID should be the same as the ReferenceGuid in the
+; the KSFILTER_DESCRIPTOR for the filter.
+;
+; INSTALLATION_SECTION specifies the section that the installer should call
+; to add the ring 3 filter class to the registry.  Except for legacy analog
+; tuner and crossbar, all BDA filters should specify KSProxy as the ring 3
+; filter class.
+;
+AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
+AddInterface = %KSCATEGORY_BDARECEIVER_COMPONENT%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
+AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter1%, NetupDriverInterfaces.Filter1
+AddInterface = %KSCATEGORY_BDARECEIVER_COMPONENT%, %guidNetupFilter1%, NetupDriverInterfaces.Filter1
+
+[NetupDriverInterfaces.Filter0]
+AddReg=NetupDriverInterfaces.Filter0.AddReg
+
+[NetupDriverInterfaces.Filter1]
+AddReg=NetupDriverInterfaces.Filter1.AddReg
+
+[NetupDriverInterfaces.Filter0.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%NetupDev.Filter0.FriendlyName%
+
+[NetupDriverInterfaces.Filter1.AddReg]
+HKR,,CLSID,,%Proxy.CLSID%
+HKR,,FriendlyName,,%NetupDev.Filter1.FriendlyName%
+
+[Strings]
+NetupInc="NetUP Inc."
+NetupDevDesc="NetUP DVB-S2 Dual Board"
+NetupDev.Filter0.FriendlyName = "Netup DVB-S2 CI channel 1"
+NetupDev.Filter1.FriendlyName = "Netup DVB-S2 CI channel 2"
+
+; Specify the GUID for the Ksproxy plugin.
+;
+Proxy.CLSID="{17CCA71B-ECD7-11D0-B908-00A0C9223196}"
+
+; Specify the GUID for the BDA Source Filters category in GraphEdit.
+;
+KSCATEGORY_BDATUNER="{71985F48-1CA1-11d3-9CC8-00C04F7971E0}"
+KSCATEGORY_BDARECEIVER_COMPONENT="{FD0A5AF3-B41D-11d2-9C95-00C04F7971E0}"
+
+guidNetupFilter0="{5D4A21D7-D575-4D81-9D35-5D561EA61DF3}"
+guidNetupFilter1="{B9C47A07-92DB-406E-9B27-AA20784A4BD6}"

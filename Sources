@@ -1,0 +1,32 @@
+# NetUP DVB-S2 CI dual card
+# Copyright (C) 2011 NetUP Inc
+#
+# Hauppauge Nova-T BDA driver
+# Copyright (C) 2003 Colin Munro
+#
+TARGETNAME=netup_cx23885
+TARGETPATH=obj$(BUILD_ALT_DIR)
+TARGETTYPE=DRIVER
+# Presumably these paths need adjusted for other DDK versions.
+TARGETLIBS=$(DDK_LIB_DEST)\*\ks.lib \
+	$(DDK_LIB_DEST)\*\ksguid.lib \
+	$(DDK_LIB_DEST)\*\BdaSup.lib
+INCLUDES=$(DDK_INC_PATH)\inc; \
+	$(DDK_INC_PATH)\wdm; \
+	$(MFC_INC_PATH)
+SOURCES=driver.cpp \
+	device.cpp \
+	filter.cpp \
+	cx23885.cpp \
+	netup-init.cpp \
+	i2c.cpp \
+	stv0900.cpp \
+	stv6110.cpp \
+	lnbh24.cpp \
+	automation.cpp \
+	dispatch.cpp \
+	cimax2.cpp \
+	cx23885-fw.cpp \
+	en50221.cpp \
+	netup.rc
+DRIVERTYPE=WDM
