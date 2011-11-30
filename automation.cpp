@@ -544,26 +544,26 @@ NTSTATUS NetupDeviceIoctl(IN PIRP pIrp,IN PKSPROPERTY pKSProperty,IN PVOID data)
 	UCHAR cmd = (ioctl->dwCmd >> 16) & 0xff;
 	UCHAR arg1 = (ioctl->dwCmd >> 8) & 0xff;
 	UCHAR arg2 = ioctl->dwCmd & 0xff;
-	KdPrint((LOG_PREFIX "%s() Channel #%d Cmd 0x%02x Arg1 0x%02x Arg2 0x%02x",
-		__FUNCTION__, channel, cmd, arg1, arg2));
+	DbgPrint(LOG_PREFIX "%s() Channel #%d Cmd 0x%02x Arg1 0x%02x Arg2 0x%02x",
+		__FUNCTION__, channel, cmd, arg1, arg2);
 	PVOID lpInputBuffer = NULL;
 	PVOID lpOutputBuffer = NULL;
 	if(ioctl->dwInputBufferLength)
 	{
 		if(ioctl->dwInputBufferLength > NETUP_IOCTL_MAX_BUFFER_SIZE)
 		{
-			KdPrint((LOG_PREFIX "%s: lpInputBuffer too big", __FUNCTION__));
+			DbgPrint(LOG_PREFIX "%s: lpInputBuffer too big", __FUNCTION__);
 			goto ioctl_error;
 		}
 		if(!ioctl->lpInputBuffer)
 		{
-			KdPrint((LOG_PREFIX "%s: lpInputBuffer is NULL", __FUNCTION__));
+			DbgPrint(LOG_PREFIX "%s: lpInputBuffer is NULL", __FUNCTION__);
 			goto ioctl_error;
 		}
 		lpInputBuffer = ExAllocatePoolWithTag(NonPagedPool, ioctl->dwInputBufferLength, 'NIPL');
 		if(!lpInputBuffer)
 		{
-			KdPrint((LOG_PREFIX "%s: unable to allocate lpInputBuffer (%s bytes)", __FUNCTION__, ioctl->dwInputBufferLength));
+			DbgPrint(LOG_PREFIX "%s: unable to allocate lpInputBuffer (%s bytes)", __FUNCTION__, ioctl->dwInputBufferLength);
 			goto ioctl_error;
 		}
 		CopyFromUser(lpInputBuffer, ioctl->lpInputBuffer, ioctl->dwInputBufferLength);
@@ -572,18 +572,18 @@ NTSTATUS NetupDeviceIoctl(IN PIRP pIrp,IN PKSPROPERTY pKSProperty,IN PVOID data)
 	{
 		if(ioctl->dwOutputBufferLength > NETUP_IOCTL_MAX_BUFFER_SIZE)
 		{
-			KdPrint((LOG_PREFIX "%s: lpOutputBuffer too big", __FUNCTION__));
+			DbgPrint(LOG_PREFIX "%s: lpOutputBuffer too big", __FUNCTION__);
 			goto ioctl_error;
 		}
 		if(!ioctl->lpOutputBuffer)
 		{
-			KdPrint((LOG_PREFIX "%s: lpOutputBuffer is NULL", __FUNCTION__));
+			DbgPrint(LOG_PREFIX "%s: lpOutputBuffer is NULL", __FUNCTION__);
 			goto ioctl_error;
 		}
 		lpOutputBuffer = ExAllocatePoolWithTag(NonPagedPool, ioctl->dwOutputBufferLength, 'UOPL');
 		if(!lpOutputBuffer)
 		{
-			KdPrint((LOG_PREFIX "%s: unable to allocate lpOutputBuffer (%s bytes)", __FUNCTION__, ioctl->dwOutputBufferLength));
+			DbgPrint(LOG_PREFIX "%s: unable to allocate lpOutputBuffer (%s bytes)", __FUNCTION__, ioctl->dwOutputBufferLength);
 			goto ioctl_error;
 		}
 		RtlZeroMemory(lpOutputBuffer, ioctl->dwOutputBufferLength);
@@ -641,13 +641,13 @@ NTSTATUS NetupDeviceIoctl(IN PIRP pIrp,IN PKSPROPERTY pKSProperty,IN PVOID data)
 		}
 		default:
 		{
-			KdPrint((LOG_PREFIX "%s: unsupported Cmd 0x%02x", __FUNCTION__, cmd));
+			DbgPrint(LOG_PREFIX "%s: unsupported Cmd 0x%02x", __FUNCTION__, cmd);
 			goto ioctl_error;
 		}
 	}
 	if(result < 0)
 	{
-		KdPrint((LOG_PREFIX "%s: failed", __FUNCTION__));
+		DbgPrint(LOG_PREFIX "%s: IOCTL failed with code %d", __FUNCTION__, result);
 		goto ioctl_error;
 	}
 	if(lpOutputBuffer != NULL && result > 0)

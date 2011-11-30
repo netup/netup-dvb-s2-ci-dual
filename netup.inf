@@ -4,36 +4,57 @@ Class=Media
 ClassGuid={4d36e96c-e325-11ce-bfc1-08002be10318}
 CatalogFile=netup.cat
 LayoutFile=Layout.inf
-DriverVer=08/01/2011,1.0.2.1
+DriverVer=08/01/2011,1.0.2.12
 Provider=%NetupInc%
 
 [DestinationDirs]
 DefaultDestDir=10,System32\drivers
 
 [manufacturer]
-%NetupInc%=NetUP
+%NetupInc%=NetUP,ntx86,ntamd64
 
 [NetUP]
-%NetupDevDesc%=NetupDriverInstall,PCI\VEN_14F1&DEV_8852&SUBSYS_2A2C1B55
 
-[NetupDriverInstall.NT]
+[NetUP.ntx86]
+%NetupDevDesc%=NetupDriverInstall.ntx86,PCI\VEN_14F1&DEV_8852&SUBSYS_2A2C1B55
+
+[NetUP.ntamd64]
+%NetupDevDesc%=NetupDriverInstall.ntamd64,PCI\VEN_14F1&DEV_8852&SUBSYS_2A2C1B55
+
+[NetupDriverInstall.ntx86]
 Include=ks.inf, kscaptur.inf, bda.inf
-Needs=KS.Registration,KSCAPTUR.Registration,BDA.Installation
-CopyFiles=NetupCopyFiles
+Needs=KS.Registration.NT,KSCAPTUR.Registration.NT,BDA.Installation.NT
+CopyFiles=NetupCopyFiles.ntx86
 
-[NetupDriverInstall.NT.Services]
-AddService=netup_cx23885,2,NetupDriverService
+[NetupDriverInstall.ntamd64]
+Include=ks.inf, kscaptur.inf, bda.inf
+Needs=KS.Registration.NT,KSCAPTUR.Registration.NT,BDA.Installation.NT
+CopyFiles=NetupCopyFiles.ntamd64
 
-[NetupDriverService]
+[NetupDriverInstall.ntx86.Services]
+AddService=netup_cx23885,2,NetupDriverService.ntx86
+
+[NetupDriverInstall.ntamd64.Services]
+AddService=netup_cx23885,2,NetupDriverService.ntamd64
+
+[NetupDriverService.ntx86]
 ServiceType=1
 StartType=1
 ErrorControl=1
 ServiceBinary=%10%\System32\drivers\netup_cx23885.sys
 
-[NetupCopyFiles]
+[NetupDriverService.ntamd64]
+ServiceType=1
+StartType=1
+ErrorControl=1
+ServiceBinary=%10%\System32\drivers\netup_cx23885_x64.sys
+
+[NetupCopyFiles.ntx86]
 netup_cx23885.sys,,,2
 
-[NetupDriverInstall.NT.Interfaces]
+[NetupCopyFiles.ntamd64]
+netup_cx23885_x64.sys,,,2
+
 ; Add an interface for each type of filter exposed by this device driver.
 ; The format of each line is as follows
 ;
@@ -51,6 +72,13 @@ netup_cx23885.sys,,,2
 ; tuner and crossbar, all BDA filters should specify KSProxy as the ring 3
 ; filter class.
 ;
+[NetupDriverInstall.ntx86.Interfaces]
+AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
+AddInterface = %KSCATEGORY_BDARECEIVER_COMPONENT%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
+AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter1%, NetupDriverInterfaces.Filter1
+AddInterface = %KSCATEGORY_BDARECEIVER_COMPONENT%, %guidNetupFilter1%, NetupDriverInterfaces.Filter1
+
+[NetupDriverInstall.ntamd64.Interfaces]
 AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
 AddInterface = %KSCATEGORY_BDARECEIVER_COMPONENT%, %guidNetupFilter0%, NetupDriverInterfaces.Filter0
 AddInterface = %KSCATEGORY_BDATUNER%, %guidNetupFilter1%, NetupDriverInterfaces.Filter1
