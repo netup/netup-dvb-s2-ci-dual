@@ -3,8 +3,8 @@
  *
  *  WDM driver for NetUP Dual DVB-S2 CI card
  *
- *  Copyright (C) 2011 NetUP Inc.
- *  Copyright (C) 2011 Sergey Kozlov <serjk@netup.ru>
+ *  Copyright (C) 2011,2012 NetUP Inc.
+ *  Copyright (C) 2011,2012 Sergey Kozlov <serjk@netup.ru>
  *
  *  ASN.1 routines, implementation for libdvben50221
  *   an implementation for the High Level Common Interface
@@ -46,17 +46,24 @@ struct netup_ci_state;
 
 LONG Netup_CAM_Read(netup_ci_state * ci, PUCHAR connection_id, PUCHAR * buffer, PLARGE_INTEGER timeout);
 LONG Netup_CAM_Write(netup_ci_state * ci, UCHAR connection_id, PUCHAR buffer, ULONG size);
+VOID Netup_CAM_Reset(netup_ci_state * ci);
 BOOLEAN Netup_CAM_Running(netup_ci_state * ci);
 
 PVOID EN50221_Init(netup_ci_state * ci);
 VOID EN50221_Reset(PVOID ctx);
 VOID EN50221_Main(PVOID ctx);
+VOID EN50221_CI_Reset(PVOID ctx);
 LONG EN50221_APP_CA_PMT_ListChange(PVOID ctx, UCHAR type, UCHAR cmd, PVOID inBuffer, ULONG inBufferSize, PVOID outBuffer, ULONG outBufferSize);
 LONG EN50221_APP_CAM_EnterMenu(PVOID ctx);
 LONG EN50221_APP_CAM_GetMenu(PVOID ctx, PVOID outBuffer, ULONG outBufferSize);
 LONG EN50221_APP_CAM_Status(PVOID ctx, PVOID outBuffer, ULONG outBufferSize);
 LONG EN50221_APP_CAM_AnswerMenu(PVOID ctx, UCHAR answ);
 LONG EN50221_APP_CAM_CloseMenu(PVOID ctx);
+LONG EN50221_APP_CAM_GetEnquiry(PVOID ctx, PVOID outBuffer, ULONG outBufferSize);
+LONG EN50221_APP_CAM_PutAnswer(PVOID ctx, UCHAR answ_id, PVOID inBuffer, ULONG inBufferSize);
+LONG EN50221_APP_CA_ID_List(PVOID ctx, PVOID outBuffer, ULONG outBufferSize);
+LONG EN50221_APP_Info(PVOID ctx, PVOID outBuffer, ULONG outBufferSize);
+
 
 
 #endif // __NETUP_EN50221_H__

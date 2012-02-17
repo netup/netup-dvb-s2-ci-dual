@@ -3352,6 +3352,11 @@ ULONG STV0900_SignalQualityGet(PKSDEVICE device, LONG demod)
 			DelayMilliseconds(1);
 		}
 		regval /= 16;
+		
+		ULONG result = static_cast<ULONG>(100.0 - 100.0*static_cast<double>(regval)/static_cast<double>(0xffff));
+		DbgPrint(LOG_PREFIX "regval=0x%x result=%d%%", regval, result);
+		return result;
+#if 0
 		if(regval > DEC_ONE)
 		{
 			KdPrint((LOG_PREFIX "regval=0x%x", regval));
@@ -3360,6 +3365,7 @@ ULONG STV0900_SignalQualityGet(PKSDEVICE device, LONG demod)
 		if(regval == 0)
 			regval = DEC_ONE;
 		return 100 - 100/(DEC_ONE/regval + 1);
+#endif
 	}
 	else
 	{

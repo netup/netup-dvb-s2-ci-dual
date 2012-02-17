@@ -639,6 +639,48 @@ NTSTATUS NetupDeviceIoctl(IN PIRP pIrp,IN PKSPROPERTY pKSProperty,IN PVOID data)
 			result = STV0900_DiSEqC_Write(GETDEVICEFROMIRP(pIrp), channel, (PUCHAR)lpInputBuffer, ioctl->dwInputBufferLength);
 			break;
 		}
+		case NETUP_IOCTL_CI_APPLICATION_INFO:
+		{
+			result = EN50221_APP_Info(
+				GETCONTEXT(GETDEVICEFROMIRP(pIrp))->en50221_context[channel],
+				lpOutputBuffer,
+				ioctl->dwOutputBufferLength
+				);
+			break;
+		}
+		case NETUP_IOCTL_CI_CONDITIONAL_ACCESS_INFO:
+		{
+			result = EN50221_APP_CA_ID_List(
+				GETCONTEXT(GETDEVICEFROMIRP(pIrp))->en50221_context[channel],
+				lpOutputBuffer,
+				ioctl->dwOutputBufferLength
+				);
+			break;
+		}
+		case NETUP_IOCTL_CI_MMI_GET_ENQUIRY:
+		{
+			result = EN50221_APP_CAM_GetEnquiry(
+				GETCONTEXT(GETDEVICEFROMIRP(pIrp))->en50221_context[channel],
+				lpOutputBuffer,
+				ioctl->dwOutputBufferLength
+				);
+			break;
+		}
+		case NETUP_IOCTL_CI_MMI_PUT_ANSWER:
+		{
+			result = EN50221_APP_CAM_PutAnswer(
+				GETCONTEXT(GETDEVICEFROMIRP(pIrp))->en50221_context[channel],
+				arg1,
+				lpInputBuffer,
+				ioctl->dwInputBufferLength
+				);
+			break;
+		}
+		case NETUP_IOCTL_CI_RESET:
+		{
+			EN50221_CI_Reset(GETCONTEXT(GETDEVICEFROMIRP(pIrp))->en50221_context[channel]);
+			break;
+		}
 		default:
 		{
 			DbgPrint(LOG_PREFIX "%s: unsupported Cmd 0x%02x", __FUNCTION__, cmd);

@@ -6,8 +6,8 @@
  *
  * NetUp Dual DVB-S2 CI card BDA interface extensions
  *
- * Copyright (C) 2011 NetUP Inc.
- * Copyright (C) 2011 Sergey Kozlov <serjk@netup.ru>
+ * Copyright (C) 2011,2012 NetUP Inc.
+ * Copyright (C) 2011,2012 Sergey Kozlov <serjk@netup.ru>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -64,10 +64,15 @@ typedef enum
 {
 	NETUP_IOCTL_DISEQC_WRITE = 0x10,
 	NETUP_IOCTL_CI_STATUS = 0x20,
+	NETUP_IOCTL_CI_APPLICATION_INFO = 0x21,
+	NETUP_IOCTL_CI_CONDITIONAL_ACCESS_INFO = 0x22,
+	NETUP_IOCTL_CI_RESET = 0x23,
 	NETUP_IOCTL_CI_MMI_ENTER_MENU = 0x30,
 	NETUP_IOCTL_CI_MMI_GET_MENU = 0x31,
 	NETUP_IOCTL_CI_MMI_ANSWER_MENU = 0x32,
 	NETUP_IOCTL_CI_MMI_CLOSE = 0x33,
+	NETUP_IOCTL_CI_MMI_GET_ENQUIRY = 0x34,
+	NETUP_IOCTL_CI_MMI_PUT_ANSWER = 0x35,
 	NETUP_IOCTL_CI_PMT_LIST_CHANGE = 0x40,
 };
 
@@ -88,11 +93,28 @@ typedef enum
 	PMT_QUERY = 3
 };
 
+/* MMI_PUT_ANSWER first argument */
+typedef enum
+{
+	MMI_ANSWER_CANCEL = 0,
+	MMI_ANSWER_OK = 1,
+};
+
 /* NETUP_CAM_STATUS::dwCamStatus bits */
 typedef enum
 {
 	NETUP_CAM_PRESENT = 1,
 	NETUP_CAM_MMI_DATA_READY = 2,
+	NETUP_CAM_MMI_ENQ_READY = 4,
+};
+
+/* MMI menu limitations */
+enum
+{
+	NETUP_MAX_STRING_LENGTH = 256,
+	NETUP_MAX_CA_ID_COUNT = 256,
+	MENU_MAX_ITEM_LENGTH = NETUP_MAX_STRING_LENGTH,
+	MENU_MAX_ITEM_COUNT = 64,
 };
 
 /* NETUP_IOCTL_CI_STATUS reply format */
@@ -101,14 +123,21 @@ struct NETUP_CAM_STATUS
 	DWORD dwCamStatus;
 	WORD wCamVendor;
 	WORD wCamDevice;
-	CHAR cCamString[256];
+	CHAR cCamString[NETUP_MAX_STRING_LENGTH];
 };
 
-/* MMI menu limitations */
-enum
+struct NETUP_CAM_APPLICATION_INFO
 {
-	MENU_MAX_ITEM_LENGTH = 256,
-	MENU_MAX_ITEM_COUNT = 64
+	BYTE bAppType;
+	WORD wAppVendor;
+	WORD wAppCode;
+	CHAR cAppString[NETUP_MAX_STRING_LENGTH];
+};
+
+struct NETUP_CAM_INFO
+{
+	DWORD dwSize;
+	WORD wCaSystemIdList[NETUP_MAX_CA_ID_COUNT];
 };
 
 /* NETUP_IOCTL_CI_MMI_GET_MENU reply format */
@@ -120,6 +149,19 @@ struct NETUP_CAM_MENU
 	CHAR cBottomText[MENU_MAX_ITEM_LENGTH];
 	CHAR cItems[MENU_MAX_ITEM_COUNT][MENU_MAX_ITEM_LENGTH];
 	DWORD dwItemCount;
+};
+
+struct NETUP_CAM_MMI_ENQUIRY
+{
+	BOOL bBlindAnswer;
+	BYTE bAnswerLength;
+	CHAR cString[MENU_MAX_ITEM_LENGTH];
+};
+
+struct NETUP_CAM_MMI_ANSWER
+{
+	BYTE bAnswerLength;
+	CHAR cAnswer[MENU_MAX_ITEM_LENGTH];
 };
 
 #endif

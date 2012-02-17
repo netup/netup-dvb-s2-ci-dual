@@ -10,7 +10,8 @@ TARGETTYPE=DRIVER
 # Presumably these paths need adjusted for other DDK versions.
 TARGETLIBS=$(DDK_LIB_DEST)\*\ks.lib \
 	$(DDK_LIB_DEST)\*\ksguid.lib \
-	$(DDK_LIB_DEST)\*\BdaSup.lib
+	$(DDK_LIB_DEST)\*\BdaSup.lib \
+	$(DDK_LIB_DEST)\*\ntdllp.lib
 INCLUDES=$(DDK_INC_PATH)\inc; \
 	$(DDK_INC_PATH)\wdm; \
 	$(MFC_INC_PATH)

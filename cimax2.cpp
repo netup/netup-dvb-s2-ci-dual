@@ -547,6 +547,7 @@ VOID Netup_CI_Stop(PKSDEVICE device)
 	ci = (netup_ci_state *)(GETCONTEXT(device)->cimax2_context[0]);
 	if(ci != NULL)
 	{
+		ci->state = DVB_CA_SLOTSTATE_SHUTDOWN;
 		KeSetEvent(&ci->event_kill, 0, FALSE);
 		KeWaitForSingleObject(ci->thread, Executive, KernelMode, FALSE, NULL);
 		ObDereferenceObject(ci->thread);
@@ -722,9 +723,19 @@ BOOLEAN Netup_CAM_Running(netup_ci_state * ci)
 	return (ci->state == DVB_CA_SLOTSTATE_RUNNING);
 }
 
+VOID Netup_CAM_Reset(netup_ci_state * ci)
+{
+	if(ci->state == DVB_CA_SLOTSTATE_RUNNING)
+	{
+		DbgPrint(LOG_PREFIX "got CAM #%d reset", ci->port->nr);
+		set_ci_state(ci, DVB_CA_SLOTSTATE_UNINITIALISED);
+	}
+}
+
 LONG Netup_CAM_Read(netup_ci_state * ci, PUCHAR connection_id, PUCHAR * buffer, PLARGE_INTEGER timeout)
 {
 	KdPrint((LOG_PREFIX "%s", __FUNCTION__, connection_id));
+	netup_read_ci_status(ci);
 	if(ci->state != DVB_CA_SLOTSTATE_RUNNING)
 	{
 		KdPrint((LOG_PREFIX "%s: state != RUNNING", __FUNCTION__));
@@ -831,6 +842,7 @@ LONG Netup_CAM_Read(netup_ci_state * ci, PUCHAR connection_id, PUCHAR * buffer, 
 LONG Netup_CAM_Write(netup_ci_state * ci, UCHAR connection_id, PUCHAR buffer, ULONG size)
 {
 	KdPrint((LOG_PREFIX "%s(conn_id=%d,size=%d)", __FUNCTION__, connection_id, size));
+	netup_read_ci_status(ci);
 	if(ci->state != DVB_CA_SLOTSTATE_RUNNING)
 	{
 		KdPrint((LOG_PREFIX "%s: state != RUNNING", __FUNCTION__));
@@ -1341,7 +1353,7 @@ static LONG dvb_ca_en50221_write_data(netup_ci_state * ci, PUCHAR buf, ULONG byt
 		goto exit;
 	if (!(status & STATUSREG_FR)) {
 		/* it wasn't free => try again later */
-		KdPrint((LOG_PREFIX "%s: STATUSREG_FR not set, status=EAGAIN", __FUNCTION__));
+		//KdPrint((LOG_PREFIX "%s: STATUSREG_FR not set, status=EAGAIN", __FUNCTION__));
 		status = CAM_RETRY;
 		goto exit;
 	}

@@ -3,8 +3,8 @@
  *
  *  WDM driver for NetUP Dual DVB-S2 CI card
  *
- *  Copyright (C) 2011 NetUP Inc.
- *  Copyright (C) 2011 Sergey Kozlov <serjk@netup.ru>
+ *  Copyright (C) 2011,2012 NetUP Inc.
+ *  Copyright (C) 2011,2012 Sergey Kozlov <serjk@netup.ru>
  *
  *  ASN.1 routines, implementation for libdvben50221
  *   an implementation for the High Level Common Interface
@@ -100,10 +100,11 @@
 #define TAG_DISPLAY_CONTROL		0x009f8801
 #define TAG_DISPLAY_REPLY       0x009f8802
 #define TAG_TEXT_LAST			0x009f8803
-#define TAG_LIST_LAST			0x009f880c
+#define TAG_MMI_ENQ				0x009f8807
+#define TAG_MMI_ANSW			0x009f8808
 #define TAG_MENU_LAST			0x009f8809
 #define TAG_MENU_ANSW			0x009f880b
-
+#define TAG_LIST_LAST			0x009f880c
 
 /**
   * CA PMT structures
@@ -144,7 +145,6 @@ struct MMI_Menu
 	LIST_ENTRY link;
 	NETUP_CAM_MENU menu;
 };
-
 
 /**
   * EN50221 internal structures
@@ -187,19 +187,32 @@ struct EN50221_Context
 	EN50221_TransportConnection connections[EN50221_MAX_TC];
 	/* CI Hardware access */
 	netup_ci_state * ci;
-	/* Application info fields */
+	/* CAM info fields */
 	USHORT camVendor;
 	USHORT camDevice;
 	CHAR camString[256];
+	/* Application info fields */
+	UCHAR appType;
+	USHORT appCode;
+	USHORT appVendor;
+	UCHAR appString[256];
 	/* CA PMT list management fields */
 	FAST_MUTEX caPmtMutex;
 	LIST_ENTRY caPmtList;
-	/* MMI fields */
+	/* MMI mutex */
 	FAST_MUTEX menuMutex;
+	/* MMI Menu fields */
 	LIST_ENTRY menuList;
 	BOOLEAN menuEnter;
 	BOOLEAN menuClose;
 	UCHAR menuAnsw;
+	/* MMI Enq-Answ fields */
+	BOOLEAN gotMmiEnq;
+	BOOLEAN gotMmiAnsw;
+	BOOLEAN mmiEnqAnswBlind;
+	UCHAR mmiEnqAnswLength;
+	CHAR mmiEnqAnswString[256];
+	UCHAR mmiEnqAnswId;
 };
 
 static VOID EN50221_Parse_R_TPU(EN50221_TransportConnection * tc, PUCHAR buf, ULONG size);
@@ -774,14 +787,15 @@ static LONG EN50221_SL_SessionOpened(PVOID ctx, UCHAR conn_id, EN50221_Session *
 	switch(sess->resource_id) {
 	case CAM_RESOURCE_RM:
 	{
-		KdPrint((LOG_PREFIX "Resource Manager sess_id %d open, sending TAG_PROFILE_CHANGE", sess->id));
+		KdPrint((LOG_PREFIX "Resource Manager sess_id %d open, sending TAG_PROFILE_ENQUIRY", sess->id));
 		UCHAR hdr[4] = { 0, 0, 0, 0 };
-		EN50221_Util_PutAppTag(hdr, 3, TAG_PROFILE_CHANGE);
+		//EN50221_Util_PutAppTag(hdr, 3, TAG_PROFILE_CHANGE);
+		EN50221_Util_PutAppTag(hdr, 3, TAG_PROFILE_ENQUIRY);
 		return EN50221_SL_Write(ctx, conn_id, sess->id, hdr, sizeof(hdr));
 	}
 	case CAM_RESOURCE_AI:
 	{
-		KdPrint((LOG_PREFIX "Application Info sess_id %d open, sending TAG_APPLICATION_INFO", sess->id));
+		KdPrint((LOG_PREFIX "Application Info sess_id %d open, sending TAG_APPLICATION_INFO_ENQUIRY", sess->id));
 		UCHAR hdr[4] = { 0, 0, 0, 0 };
 		EN50221_Util_PutAppTag(hdr, 3, TAG_APP_INFO_ENQUIRY);
 		return EN50221_SL_Write(ctx, conn_id, sess->id, hdr, sizeof(hdr));
@@ -921,6 +935,7 @@ close_error:
 
 static LONG EN50221_APP_ProfileEnquiry(PVOID ctx, UCHAR conn_id, USHORT sess_id, PUCHAR app_data, ULONG app_data_size)
 {
+	KdPrint((LOG_PREFIX "%s: sending resources list", __FUNCTION__));
 	ULONG resources[4] = { CAM_RESOURCE_RM, CAM_RESOURCE_AI, CAM_RESOURCE_CA, CAM_RESOURCE_MMI };
 	UCHAR hdr[3 + 3 + sizeof(resources)];
 	ULONG offset = EN50221_Util_PutAppTag(hdr, 3, TAG_PROFILE_REPLY);
@@ -938,6 +953,23 @@ static LONG EN50221_APP_ProfileEnquiry(PVOID ctx, UCHAR conn_id, USHORT sess_id,
 	return EN50221_SL_Write(ctx, conn_id, sess_id, hdr, offset);
 }
 
+static LONG EN50221_APP_ProfileReply(PVOID ctx, UCHAR conn_id, USHORT sess_id, PUCHAR app_data, ULONG app_data_size)
+{
+	KdPrint((LOG_PREFIX "%s: got TAG_PROFILE_REPLY", __FUNCTION__));
+	for(ULONG i = 0; i < app_data_size/4; i++)
+	{
+		ULONG resource_id = ((ULONG)app_data[i*4] << 24) +
+							((ULONG)app_data[i*4+1] << 16) +
+							((ULONG)app_data[i*4+2] << 8) +
+							(ULONG)app_data[i*4+3];
+		KdPrint((LOG_PREFIX "Application provides resource ID 0x%08x", resource_id));
+	}
+	KdPrint((LOG_PREFIX "%s: sending TAG_PROFILE_CHANGE", __FUNCTION__));
+	UCHAR hdr[4] = { 0, 0, 0, 0 };
+	EN50221_Util_PutAppTag(hdr, 3, TAG_PROFILE_CHANGE);
+	return EN50221_SL_Write(ctx, conn_id, sess_id, hdr, sizeof(hdr));
+}
+
 static LONG EN50221_APP_ApplicationInfo(PVOID ctx, UCHAR conn_id, USHORT sess_id, PUCHAR app_data, ULONG app_data_size)
 {
 	if(app_data_size < 6)
@@ -946,18 +978,17 @@ static LONG EN50221_APP_ApplicationInfo(PVOID ctx, UCHAR conn_id, USHORT sess_id
 		return EN50221_IO_ERROR;
 	}
 	EN50221_Context * en50221 = reinterpret_cast<EN50221_Context *>(ctx);
-	UCHAR app_type = app_data[0];
-	ULONG app_vendor = ((ULONG)app_data[1] << 8) | (ULONG)app_data[2];
-	ULONG app_vendor_code = ((ULONG)app_data[3] << 8) | (ULONG)app_data[4];
+	en50221->appType = app_data[0];
+	en50221->appVendor = ((ULONG)app_data[1] << 8) | (ULONG)app_data[2];
+	en50221->appCode = ((ULONG)app_data[3] << 8) | (ULONG)app_data[4];
 	UCHAR str_size = app_data[5];
-	UCHAR app_str[256];
+	RtlZeroMemory(en50221->appString, sizeof(en50221->appString));
 	for(UCHAR i = 0; i < str_size; i++)
 	{
-		app_str[i] = app_data[i + 6];
+		en50221->appString[i] = app_data[i + 6];
 	}
-	app_str[str_size] = 0;
 	KdPrint((LOG_PREFIX "Application Info: type=0x%02x vendor=0x%04x code=0x%04x string=\"%s\"",
-		(ULONG)app_type, app_vendor, app_vendor_code, app_str));
+		(ULONG)(en50221->appType), (ULONG)(en50221->appVendor), (ULONG)(en50221->appCode), en50221->appString));
 	return 0;
 }
 
@@ -1105,6 +1136,30 @@ static LONG EN50221_APP_MMI_List(PVOID ctx, UCHAR conn_id, USHORT sess_id, BOOLE
 	return 0;
 }
 
+static LONG EN50221_APP_MMI_Enquiry(PVOID ctx, UCHAR conn_id, USHORT sess_id, PUCHAR app_data, ULONG app_data_size)
+{
+	if(app_data_size < 2)
+	{
+		KdPrint((LOG_PREFIX "%s: data too short", __FUNCTION__));
+		return EN50221_IO_ERROR;
+	}
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	ExAcquireFastMutex(&en50221->menuMutex);
+	en50221->mmiEnqAnswBlind = app_data[0] & 0x01;
+	en50221->mmiEnqAnswLength = app_data[1];
+	RtlZeroMemory(en50221->mmiEnqAnswString, sizeof(en50221->mmiEnqAnswString));
+	for(ULONG i = 0; i < app_data_size - 2; i++)
+	{
+		en50221->mmiEnqAnswString[i] = app_data[i+2];
+	}
+	KdPrint((LOG_PREFIX "got MMI Enq: blind %d length %d string '%s'",
+		(ULONG)(en50221->mmiEnqAnswBlind), (ULONG)(en50221->mmiEnqAnswLength), en50221->mmiEnqAnswString));
+	en50221->gotMmiEnq = TRUE;
+	en50221->gotMmiAnsw = FALSE;
+	ExReleaseFastMutex(&en50221->menuMutex);
+	return 0;
+}
+
 static LONG EN50221_APP_PendingActions(PVOID ctx, UCHAR conn_id)
 {
 	LONG result = 0;
@@ -1207,6 +1262,27 @@ static LONG EN50221_APP_PendingActions(PVOID ctx, UCHAR conn_id)
 				ExReleaseFastMutex(&en50221->menuMutex);
 				return result;
 			}
+			else if(en50221->gotMmiAnsw)
+			{
+				KdPrint((LOG_PREFIX "MMI Answ: %s", en50221->mmiEnqAnswString));
+				PUCHAR hdr = (PUCHAR)ExAllocatePoolWithTag(NonPagedPool, en50221->mmiEnqAnswLength + 7, 'ODPA');
+				if(hdr != NULL)
+				{
+					EN50221_Util_PutAppTag(hdr, 3, TAG_MMI_ANSW);
+					ULONG offset = 3;
+					offset += ASN_1_Encode(en50221->mmiEnqAnswLength + 1, hdr + offset, 3);
+					hdr[offset] = en50221->mmiEnqAnswId;
+					offset++;
+					RtlCopyMemory(hdr + offset, en50221->mmiEnqAnswString, en50221->mmiEnqAnswLength);
+					offset += en50221->mmiEnqAnswLength;
+					result = EN50221_SL_Write(ctx, conn_id, sess->id, hdr, offset);
+					en50221->gotMmiEnq = FALSE;
+					en50221->gotMmiAnsw = FALSE;
+					ExFreePool(hdr);
+				}
+				ExReleaseFastMutex(&en50221->menuMutex);
+				return result;
+			}
 			else
 			{
 				ExReleaseFastMutex(&en50221->menuMutex);
@@ -1240,6 +1316,9 @@ static LONG EN50221_Process_Application_Data(PVOID ctx, UCHAR conn_id, USHORT se
 			case TAG_PROFILE_ENQUIRY:
 				app_result = EN50221_APP_ProfileEnquiry(ctx, conn_id, sess_id, app_data, app_data_size);
 				break;
+			case TAG_PROFILE_REPLY:
+				app_result = EN50221_APP_ProfileReply(ctx, conn_id, sess_id, app_data, app_data_size);
+				break;
 			case TAG_APP_INFO:
 				app_result = EN50221_APP_ApplicationInfo(ctx, conn_id, sess_id, app_data, app_data_size);
 				break;
@@ -1252,6 +1331,9 @@ static LONG EN50221_Process_Application_Data(PVOID ctx, UCHAR conn_id, USHORT se
 			case TAG_LIST_LAST:
 			case TAG_MENU_LAST:
 				app_result = EN50221_APP_MMI_List(ctx, conn_id, sess_id, app_tag == TAG_MENU_LAST, app_data, app_data_size);
+				break;
+			case TAG_MMI_ENQ:
+				app_result = EN50221_APP_MMI_Enquiry(ctx, conn_id, sess_id, app_data, app_data_size);
 				break;
 			default:
 				{
@@ -1319,6 +1401,13 @@ static BOOLEAN EN50221_CI_Running(PVOID ctx)
 	EN50221_Context * en50221 = (EN50221_Context *)ctx;
 	ASSERT(en50221 != NULL && en50221->ci != NULL);
 	return Netup_CAM_Running(en50221->ci);
+}
+
+VOID EN50221_CI_Reset(PVOID ctx)
+{
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	ASSERT(en50221 != NULL && en50221->ci != NULL);
+	return Netup_CAM_Reset(en50221->ci);
 }
 
 VOID EN50221_Main(PVOID ctx)
@@ -1805,6 +1894,10 @@ LONG EN50221_APP_CAM_Status(PVOID ctx, PVOID outBuffer, ULONG outBufferSize)
 		{
 			ci_status->dwCamStatus |= NETUP_CAM_MMI_DATA_READY;
 		}
+		if(en50221->gotMmiEnq == TRUE)
+		{
+			ci_status->dwCamStatus |= NETUP_CAM_MMI_ENQ_READY;
+		}
 		ExReleaseFastMutex(&en50221->menuMutex);
 	}
 	return sizeof(*ci_status);
@@ -1863,4 +1956,113 @@ LONG EN50221_APP_CAM_CloseMenu(PVOID ctx)
 	en50221->menuClose = TRUE;
 	ExReleaseFastMutex(&en50221->menuMutex);
 	return 0;
+}
+
+LONG EN50221_APP_CAM_GetEnquiry(PVOID ctx, PVOID outBuffer, ULONG outBufferSize)
+{
+	ASSERT(ctx != NULL);
+	if(outBuffer == NULL || outBufferSize < sizeof(NETUP_CAM_MMI_ENQUIRY))
+	{
+		KdPrint((LOG_PREFIX "%s: output buffer too short", __FUNCTION__));
+		return EN50221_INVALID_ARGUMENT;
+	}
+	NETUP_CAM_MMI_ENQUIRY * enq = reinterpret_cast<NETUP_CAM_MMI_ENQUIRY *>(outBuffer);
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	ExAcquireFastMutex(&en50221->menuMutex);
+	if(en50221->gotMmiEnq != TRUE)
+	{
+		ExReleaseFastMutex(&en50221->menuMutex);
+		KdPrint((LOG_PREFIX "%s: MMI ENQ hasn't received", __FUNCTION__));
+		return 0;
+	}
+	RtlZeroMemory(enq, sizeof(*enq));
+	enq->bBlindAnswer = en50221->mmiEnqAnswBlind;
+	enq->bAnswerLength = en50221->mmiEnqAnswLength;
+	RtlCopyMemory(enq->cString, en50221->mmiEnqAnswString, enq->bAnswerLength);
+	en50221->gotMmiEnq = FALSE;
+	en50221->mmiEnqAnswLength = 0;
+	RtlZeroMemory(en50221->mmiEnqAnswString, sizeof(en50221->mmiEnqAnswString));
+	ExReleaseFastMutex(&en50221->menuMutex);
+	return sizeof(*enq);
+}
+
+LONG EN50221_APP_CAM_PutAnswer(PVOID ctx, UCHAR answ_id, PVOID inBuffer, ULONG inBufferSize)
+{
+	ASSERT(ctx != NULL);
+	if(inBuffer == NULL || inBufferSize < sizeof(NETUP_CAM_MMI_ANSWER))
+	{
+		KdPrint((LOG_PREFIX "%s: input buffer too short", __FUNCTION__));
+		return EN50221_INVALID_ARGUMENT;
+	}
+	NETUP_CAM_MMI_ANSWER * answ = reinterpret_cast<NETUP_CAM_MMI_ANSWER *>(inBuffer);
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	ExAcquireFastMutex(&en50221->menuMutex);
+	en50221->mmiEnqAnswLength = answ->bAnswerLength;
+	RtlCopyMemory(en50221->mmiEnqAnswString, answ->cAnswer, answ->bAnswerLength);
+	en50221->mmiEnqAnswId = answ_id;
+	en50221->gotMmiEnq = FALSE;
+	en50221->gotMmiAnsw = TRUE;
+	ExReleaseFastMutex(&en50221->menuMutex);
+	return 0;
+}
+
+LONG EN50221_APP_CA_ID_List(PVOID ctx, PVOID outBuffer, ULONG outBufferSize)
+{
+	ASSERT(ctx != NULL);
+	if(outBuffer == NULL || outBufferSize < sizeof(NETUP_CAM_INFO))
+	{
+		KdPrint((LOG_PREFIX "%s: output buffer too short", __FUNCTION__));
+		return EN50221_INVALID_ARGUMENT;
+	}
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	NETUP_CAM_INFO * info = reinterpret_cast<NETUP_CAM_INFO *>(outBuffer);
+	RtlZeroMemory(info, sizeof(*info));
+	if(EN50221_CI_Running(ctx) == TRUE)
+	{
+		for(ULONG i = 0; i < EN50221_MAX_TC; i++)
+		{
+			if(en50221->connections[i].state == EN50221_TC_STATE_OPEN)
+			{
+				for(ULONG j = 0; j < EN50221_MAX_SESSION; j++)
+				{
+					if(en50221->connections[i].sessions[j].resource_id == CAM_RESOURCE_CA &&
+						en50221->connections[i].sessions[j].context != 0)
+					{
+						USHORT * list = reinterpret_cast<USHORT *>(en50221->connections[i].sessions[j].context);
+						while(*list != 0xffff)
+						{
+							info->wCaSystemIdList[info->dwSize] = *list;
+							info->dwSize++;
+							if(info->dwSize >= NETUP_MAX_CA_ID_COUNT)
+								break;
+							list++;
+						}
+					}
+				}
+			}
+		}	
+	}
+	return sizeof(*info);
+}
+
+LONG EN50221_APP_Info(PVOID ctx, PVOID outBuffer, ULONG outBufferSize)
+{
+	ASSERT(ctx != NULL);
+	if(outBuffer == NULL || outBufferSize < sizeof(NETUP_CAM_APPLICATION_INFO))
+	{
+		KdPrint((LOG_PREFIX "%s: output buffer too short", __FUNCTION__));
+		return EN50221_INVALID_ARGUMENT;
+	}
+	EN50221_Context * en50221 = (EN50221_Context *)ctx;
+	NETUP_CAM_APPLICATION_INFO * info = reinterpret_cast<NETUP_CAM_APPLICATION_INFO *>(outBuffer);
+	RtlZeroMemory(info, sizeof(*info));
+	if(EN50221_CI_Running(ctx) == TRUE)
+	{
+		info->bAppType = en50221->appType;
+		info->wAppVendor = en50221->appVendor;
+		info->wAppCode = en50221->appCode;
+		ULONG strSize = (sizeof(info->cAppString) > sizeof(en50221->appString)) ? sizeof(en50221->appString) : sizeof(info->cAppString);
+		RtlCopyMemory(info->cAppString, en50221->appString, strSize);
+	}
+	return sizeof(*info);
 }
