@@ -4,7 +4,7 @@ Class=Media
 ClassGuid={4d36e96c-e325-11ce-bfc1-08002be10318}
 CatalogFile=netup.cat
 LayoutFile=Layout.inf
-DriverVer=08/01/2011,1.0.2.13
+DriverVer=08/01/2011,1.0.2.35
 Provider=%NetupInc%
 
 [DestinationDirs]
