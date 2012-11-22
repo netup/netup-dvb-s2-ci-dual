@@ -431,15 +431,16 @@ NTSTATUS NetupFilterCommitChanges(IN PIRP pIrp,IN PKSMETHOD pKSMethod,OPTIONAL P
 		}
 		ULONG polarisation = GETCONTEXT(pContext->device)->tuner[pContext->nr].polarisation;
 		BOOLEAN highVoltageEnable = (polarisation == BDA_POLARISATION_LINEAR_H || polarisation == BDA_POLARISATION_CIRCULAR_L);
-		if(oscFreq != 0 && freq > oscFreq)
+		if(oscFreq != 0)
 		{
+			ULONG lockFreq = (freq > oscFreq) ? (freq - oscFreq) : (oscFreq - freq);
 			KdPrint((LOG_PREFIX "%s: Tune Freq %d Oscillator Freq %d Tone %d High voltage %d", __FUNCTION__, freq, oscFreq, toneEnable, highVoltageEnable));
 			LNBH24_SetVoltage(pContext->device, pContext->nr, highVoltageEnable);
 			STV0900_SetTone(pContext->device, pContext->nr, toneEnable);
 			STV0900_LockSignal(
 				pContext->device,
 				pContext->nr,
-				freq - oscFreq,
+				lockFreq,
 				GETCONTEXT(pContext->device)->tuner[pContext->nr].symbolRate
 			);
 			STV0900_GetSignalInfo(

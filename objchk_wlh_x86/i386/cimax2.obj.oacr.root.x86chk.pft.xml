@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DEFECTS>
+<OACRDEFECTCOUNT>3</OACRDEFECTCOUNT>
+<OACRERRORCOUNT>0</OACRERRORCOUNT>
+<DEFECT _seq="1"><SFA><LINE>660</LINE><COLUMN>84</COLUMN><FILENAME>cimax2.cpp</FILENAME><FILEPATH>c:\serjk\git\netup-dvb-s2-ci-dual\</FILEPATH></SFA><DEFECTCODE>28155</DEFECTCODE><DESCRIPTION>The function being assigned or passed should be a KSTART_ROUTINE function:  Add the declaration 'KSTART_ROUTINE Netup_CI_Worker_Thread;' before the current first declaration of Netup_CI_Worker_Thread.</DESCRIPTION><FUNCTION>Netup_CI_Init</FUNCTION><FUNCLINE>565</FUNCLINE><PATH/></DEFECT>
+<DEFECT _seq="2"><SFA><LINE>748</LINE><COLUMN>2</COLUMN><FILENAME>cimax2.cpp</FILENAME><FILEPATH>c:\serjk\git\netup-dvb-s2-ci-dual\</FILEPATH></SFA><DEFECTCODE>6067</DEFECTCODE><DESCRIPTION>Parameter '2' in call to 'DbgPrint' must be the address of the string</DESCRIPTION><FUNCTION>Netup_CAM_Read</FUNCTION><FUNCLINE>735</FUNCLINE><PATH/></DEFECT>
+<DEFECT _seq="3"><SFA><LINE>823</LINE><COLUMN>4</COLUMN><FILENAME>cimax2.cpp</FILENAME><FILEPATH>c:\serjk\git\netup-dvb-s2-ci-dual\</FILEPATH></SFA><DEFECTCODE>6067</DEFECTCODE><DESCRIPTION>Parameter '2' in call to 'DbgPrint' must be the address of the string</DESCRIPTION><FUNCTION>Netup_CAM_Read</FUNCTION><FUNCLINE>735</FUNCLINE><PATH/></DEFECT>
+</DEFECTS>

@@ -1,0 +1,30 @@
+
+
+AMD64_OBJECTS=\
+ $(OBJ_PATH)\$O\driver.obj \
+ $(OBJ_PATH)\$O\device.obj \
+ $(OBJ_PATH)\$O\filter.obj \
+ $(OBJ_PATH)\$O\cx23885.obj \
+ $(OBJ_PATH)\$O\netup-init.obj \
+ $(OBJ_PATH)\$O\i2c.obj \
+ $(OBJ_PATH)\$O\stv0900.obj \
+ $(OBJ_PATH)\$O\stv6110.obj \
+ $(OBJ_PATH)\$O\lnbh24.obj \
+ $(OBJ_PATH)\$O\automation.obj \
+ $(OBJ_PATH)\$O\dispatch.obj \
+ $(OBJ_PATH)\$O\cimax2.obj \
+ $(OBJ_PATH)\$O\cx23885-fw.obj \
+ $(OBJ_PATH)\$O\en50221.obj \
+
+
+_RES_FILE=$(OBJ_PATH)\$O\netup.res
+
+
+
+# lowercased
+BASEDIR=c:\winddk\7600.16385.1
+OBJECT_ROOT=c:\winddk\7600.16385.1
+MAKEDIR_LOWERCASE=c:\serjk\git\netup-dvb-s2-ci-dual
+OBJ_PATH=c:\serjk\git\netup-dvb-s2-ci-dual
+CONCURRENT_MIDL=0
+CONCURRENT_MANIFEST_BUILD=0

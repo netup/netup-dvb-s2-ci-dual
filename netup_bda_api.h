@@ -36,15 +36,26 @@ typedef enum {
     KSPROPERTY_BDA_NETUP_IOCTL = 0,
 } KSPROPERTY_BDA_NETUP_EXTENSION;
 
+#pragma pack(push, 1)
 struct NETUP_BDA_EXT_CMD
 {
-	DWORD dwCmd;
+	DWORD64 dwCmd;
 	LPVOID lpInputBuffer;
-	DWORD dwInputBufferLength;
+#ifndef _WIN64
+	DWORD dwReserved1;
+#endif
+	DWORD64 dwInputBufferLength;
 	LPVOID lpOutputBuffer;
-	DWORD dwOutputBufferLength;
-	LPDWORD lpOutputLength;
+#ifndef _WIN64
+	DWORD dwReserved2;
+#endif
+	DWORD64 dwOutputBufferLength;
+	LPVOID lpOutputLength;
+#ifndef _WIN64
+	DWORD dwReserved3;
+#endif
 };
+#pragma pack(pop)
 
 // specify the sizeof the actual property to retrieve here 
 #define DEFINE_KSPROPERTY_ITEM_BDA_NETUP_IOCTL(SetHandler)\
@@ -117,10 +128,11 @@ enum
 	MENU_MAX_ITEM_COUNT = 64,
 };
 
+#pragma pack(push, 1)
 /* NETUP_IOCTL_CI_STATUS reply format */
 struct NETUP_CAM_STATUS
 {
-	DWORD dwCamStatus;
+	DWORD64 dwCamStatus;
 	WORD wCamVendor;
 	WORD wCamDevice;
 	CHAR cCamString[NETUP_MAX_STRING_LENGTH];
@@ -136,7 +148,7 @@ struct NETUP_CAM_APPLICATION_INFO
 
 struct NETUP_CAM_INFO
 {
-	DWORD dwSize;
+	DWORD64 dwSize;
 	WORD wCaSystemIdList[NETUP_MAX_CA_ID_COUNT];
 };
 
@@ -148,7 +160,7 @@ struct NETUP_CAM_MENU
 	CHAR cSubTitle[MENU_MAX_ITEM_LENGTH];
 	CHAR cBottomText[MENU_MAX_ITEM_LENGTH];
 	CHAR cItems[MENU_MAX_ITEM_COUNT][MENU_MAX_ITEM_LENGTH];
-	DWORD dwItemCount;
+	DWORD64 dwItemCount;
 };
 
 struct NETUP_CAM_MMI_ENQUIRY
@@ -163,6 +175,7 @@ struct NETUP_CAM_MMI_ANSWER
 	BYTE bAnswerLength;
 	CHAR cAnswer[MENU_MAX_ITEM_LENGTH];
 };
+#pragma pack(pop)
 
 #endif
 

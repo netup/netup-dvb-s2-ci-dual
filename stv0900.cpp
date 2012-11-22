@@ -3301,7 +3301,7 @@ static void stv0900_status(struct stv0900_internal *intp,
 		ber = ber >> 13;
 	}
 
-	KdPrint((LOG_PREFIX "TS bitrate = %d Mbit/sec, BER = %d", bitrate, ber));
+	DbgPrint(LOG_PREFIX "TS bitrate = %d Mbit/sec, BER = %d", bitrate, ber);
 }
 
 BOOL STV0900_HasLocked(PKSDEVICE device, LONG demod)
@@ -3323,8 +3323,6 @@ BOOL STV0900_HasLocked(PKSDEVICE device, LONG demod)
 		return FALSE;
 	}
 }
-
-#define DEC_ONE (1 << 14)
 
 ULONG STV0900_SignalQualityGet(PKSDEVICE device, LONG demod)
 {
@@ -3355,17 +3353,11 @@ ULONG STV0900_SignalQualityGet(PKSDEVICE device, LONG demod)
 		
 		ULONG result = static_cast<ULONG>(100.0 - 100.0*static_cast<double>(regval)/static_cast<double>(0xffff));
 		DbgPrint(LOG_PREFIX "regval=0x%x result=%d%%", regval, result);
+
+		ULONG ts_speed = ((demod == 0) ? stv0900_read_reg(intp, R0900_P1_TSSPEED) : stv0900_read_reg(intp, R0900_P2_TSSPEED));
+		DbgPrint(LOG_PREFIX "TS%d speed %dMHz (regval %02x)", demod, (intp->mclk*32/ts_speed)/1000000L, ts_speed);
+
 		return result;
-#if 0
-		if(regval > DEC_ONE)
-		{
-			KdPrint((LOG_PREFIX "regval=0x%x", regval));
-			//return 0;
-		}
-		if(regval == 0)
-			regval = DEC_ONE;
-		return 100 - 100/(DEC_ONE/regval + 1);
-#endif
 	}
 	else
 	{
@@ -3547,7 +3539,7 @@ LONG STV0900_DiSEqC_Write(PKSDEVICE device, LONG demod, PUCHAR data, ULONG NbDat
 		while (stv0900_get_bits(intp, FIFO_FULL))
 			;/* checkpatch complains */
 		stv0900_write_reg(intp, DISTXDATA, data[i]);
-		KdPrint((LOG_PREFIX "DiSEqC cmd data <%02x>", (ULONG)data[i]));
+		DbgPrint(LOG_PREFIX "DiSEqC cmd data <%02x>", (ULONG)data[i]);
 		i++;
 	}
 
@@ -3567,6 +3559,16 @@ VOID STV0900_SetTone(PKSDEVICE device, LONG demod, BOOLEAN toneEnable)
 	stv0900_state * state = (stv0900_state *)(GETCONTEXT(device)->stv0900_context);
 	stv0900_set_tone(state, (fe_stv0900_demod_num)demod, toneEnable ? SEC_TONE_ON : SEC_TONE_OFF);
 }
+
+#if 0
+VOID STV0900_SetMclk(PKSDEVICE device, LONG demod, ULONG mclk, ULONG divider)
+{
+	ASSERT(device != NULL);
+	ASSERT(demod >= 0 && demod < 2);
+	stv0900_state * state = (stv0900_state *)(GETCONTEXT(device)->stv0900_context);
+	stv0900_set_tone(state, (fe_stv0900_demod_num)demod, );
+}
+#endif
 
 NTSTATUS STV0900_Attach(PKSDEVICE device, ULONG i2c, const stv0900_config *config, LONG demod)
 {
@@ -3642,12 +3644,20 @@ void STV0900_I2C_Gate_Ctrl(PKSDEVICE device, ULONG demod, ULONG enable)
 	stv0900_write_bits(((stv0900_state *)(GETCONTEXT(device)->stv0900_context))->internal, I2CT_ON, enable & 0xff);
 }
 
+
+#undef TSSPEED_AUTODETECT
+
 static struct stv0900_reg stv0900_ts_regs[] = {
 	{ R0900_TSGENERAL, 0x00 },
+#ifndef TSSPEED_AUTODETECT
 	{ R0900_P1_TSSPEED, 0x40 },
 	{ R0900_P2_TSSPEED, 0x40 },
 	{ R0900_P1_TSCFGM, 0xc0 },
 	{ R0900_P2_TSCFGM, 0xc0 },
+#else
+	{ R0900_P1_TSCFGM, 0x00 },
+	{ R0900_P2_TSCFGM, 0x00 },
+#endif
 	{ R0900_P1_TSCFGH, 0xe0 },
 	{ R0900_P2_TSCFGH, 0xe0 },
 	{ R0900_P1_TSCFGL, 0x20 },
@@ -3656,6 +3666,31 @@ static struct stv0900_reg stv0900_ts_regs[] = {
 };
 
 static struct stv0900_config netup_stv0900_config;
+
+#if 0
+static VOID STV0900_GetMclkSettings(stv0900_state * state, LONG demod)
+{
+	UNICODE_STRING registryPath;
+	RtlInitUnicodeString(&registryPath, L"HKEY_CURRENT_USER\Software\NetUP\NetUP-DVB-S2-CI");
+	OBJECT_ATTRIBUTES oa;
+	InitializeObjectAttributes(&oa, &registryPath, OBJ_KERNEL_HANDLE | OBJ_CASE_INSENSITIVE, NULL, NULL);
+	HANDLE hKey;
+	status = ZwOpenKey(&hKey, KEY_READ, &oa);
+	if(NT_SUCCESS(status))
+	{
+		UNICODE_STRING valName;
+		RtlInitUnicodeString(&valName,L"mclk0");
+
+		ZwClose(hKey);
+	}
+	else
+	{
+		KdPrint((LOG_PREFIX "using default MCLK settings"));
+		netup_stv0900_config.mclk1 = 135000000;
+		netup_stv0900_config.mclk2 = 135000000;
+	}
+}
+#endif
 
 NTSTATUS STV0900_Init(PKSDEVICE device)
 {

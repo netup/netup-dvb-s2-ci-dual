@@ -1461,6 +1461,8 @@ static LONG dvb_ca_en50221_link_init(netup_ci_state * ci)
 		return ret;
 	if ((ret = dvb_ca_en50221_wait_if_status(ci, STATUSREG_DA, 100)) != 0)
 		return ret;
+
+
 	if ((ret = dvb_ca_en50221_read_data(ci, buf, 2)) != 2)
 	{
 		KdPrint((LOG_PREFIX "dvb_ca_en50221_read_data(ci, buf, 2) failed"));
@@ -1479,12 +1481,38 @@ static LONG dvb_ca_en50221_link_init(netup_ci_state * ci)
 	KdPrint((LOG_PREFIX "Chosen link buffer size of %d", buf_size));
 
 	/* write the buffer size to the CAM */
-	if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_COMMAND, IRQEN | CMDREG_SW)) != 0)
+	if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_COMMAND, IRQEN | CMDREG_SW | CMDREG_HC)) != 0)
 		return ret;
 	if ((ret = dvb_ca_en50221_wait_if_status(ci, STATUSREG_FR, 1000)) != 0)
 		return ret;
-	if ((ret = dvb_ca_en50221_write_data(ci, buf, 2)) != 2)
+
+
+	/////
+
+	/* send the amount of data */
+	if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_SIZE_HIGH, 0)) != 0)
+		return ret;
+	if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_SIZE_LOW, sizeof(buf))) != 0)
+		return ret;
+
+	/* send the buffer */
+	for (ULONG i = 0; i < sizeof(buf); i++) {
+		if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_DATA, buf[i])) != 0)
+			return ret;
+	}
+
+	/* check for write error (WE should now be 0) */
+	if ((ret = netup_ci_read_cam_ctl(ci, CTRLIF_STATUS)) < 0)
+		return ret;
+	if (ret & STATUSREG_WE) {
+		set_ci_state(ci, DVB_CA_SLOTSTATE_LINKINIT);
 		return -1;
+	}
+
+/////
+
+	//if ((ret = dvb_ca_en50221_write_data(ci, buf, 2)) != 2)
+	//	return -1;
 	if ((ret = netup_ci_write_cam_ctl(ci, CTRLIF_COMMAND, IRQEN)) != 0)
 		return ret;
 

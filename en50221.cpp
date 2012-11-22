@@ -1978,7 +1978,11 @@ LONG EN50221_APP_CAM_GetEnquiry(PVOID ctx, PVOID outBuffer, ULONG outBufferSize)
 	RtlZeroMemory(enq, sizeof(*enq));
 	enq->bBlindAnswer = en50221->mmiEnqAnswBlind;
 	enq->bAnswerLength = en50221->mmiEnqAnswLength;
-	RtlCopyMemory(enq->cString, en50221->mmiEnqAnswString, enq->bAnswerLength);
+	RtlCopyMemory(
+		enq->cString,
+		en50221->mmiEnqAnswString,
+		(sizeof(enq->cString) < sizeof(en50221->mmiEnqAnswString)) ? sizeof(enq->cString) : sizeof(en50221->mmiEnqAnswString)
+	);
 	en50221->gotMmiEnq = FALSE;
 	en50221->mmiEnqAnswLength = 0;
 	RtlZeroMemory(en50221->mmiEnqAnswString, sizeof(en50221->mmiEnqAnswString));
